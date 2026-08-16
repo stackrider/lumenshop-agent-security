@@ -1,0 +1,27 @@
+# Segredos — nunca commitar
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependências
+node_modules/
+
+# Banco do laboratório (é gerado a partir da semente)
+backend/data/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+
+# Saída dos scripts
+scripts/out/
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
