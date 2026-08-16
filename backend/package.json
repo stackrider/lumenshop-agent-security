@@ -1,0 +1,20 @@
+{
+  "name": "lumenshop-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend ficticio da LumenShop — laboratorio de seguranca de agentes (episodio 003, Joe Ships). Dados 100% inventados.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "reset": "node src/reset.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.5.0",
+    "express": "^4.21.1"
+  }
+}
