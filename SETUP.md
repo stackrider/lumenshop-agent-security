@@ -141,6 +141,20 @@ pode redesenhar algum campo. Se algum nó abrir com aviso de parâmetro
 desconhecido, abra, confira os campos contra a tabela acima e salve — o
 desenho do fluxo (quem liga em quem) é o que importa e não muda.
 
+**Testado:** os dois arquivos foram importados sem erro no **n8n 2.34.6**
+(a `latest` na data em que este repositório foi escrito), pela linha de
+comando dentro do container:
+
+```bash
+docker compose exec n8n n8n import:workflow --input=/workflows/lumenshop-vulnerable.json
+docker compose exec n8n n8n import:workflow --input=/workflows/lumenshop-hardened.json
+```
+
+Esse atalho funciona porque o compose monta a pasta `workflows/` dentro do
+container em `/workflows`. Depois é só recarregar a tela do n8n: os dois
+aparecem na lista. Se você quiser travar a versão, ponha `N8N_VERSION=2.34.6`
+no seu `.env`.
+
 O nó de código do workflow blindado lê `$env.LIMIT_BODY_CHARS`. Para isso o
 compose sobe o n8n com `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`. Em produção de
 verdade você deixaria isso bloqueado e passaria o limite por outro caminho —

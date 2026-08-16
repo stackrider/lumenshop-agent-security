@@ -684,6 +684,19 @@ E ainda há `429 taxa_excedida` (`LIMIT_CALLS_PER_MINUTE`, padrão 20) e
 fecha a conta do dia inteiro. Tudo isso aparece em `GET /admin/logs` e
 `GET /admin/gastos`.
 
+> **Limites conversam entre si — e vale reparar nisso.** Com os números
+> padrão, o teto de passos (12) fecha a sessão antes de o teto de chamadas por
+> minuto (20) ter chance de disparar. Ou seja: nessa configuração, quem segura
+> a conversa é o passo, e a taxa por minuto só entra em cena contra rajada de
+> muitos telefones. Para ver o `taxa_excedida` acontecer, suba os passos e
+> baixe a taxa:
+>
+> ```bash
+> LIMIT_STEPS_PER_SESSION=100 LIMIT_CALLS_PER_MINUTE=3 MODE=hardened npm start
+> ```
+>
+> Limite que você nunca viu disparar é limite que você não tem. Teste os seus.
+
 Este é o segundo ataque que sobrevive: com muitos números e muita paciência, a
 conta ainda sobe. Só que agora ela sobe até um número que **você escolheu**.
 
