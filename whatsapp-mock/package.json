@@ -1,0 +1,17 @@
+{
+  "name": "lumenshop-whatsapp-mock",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mock da WhatsApp Cloud API (Meta) + UI de conversa estilo WhatsApp para o laboratorio do episodio 003 (Joe Ships). Dados 100% ficticios.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.1"
+  }
+}
