@@ -123,6 +123,7 @@ function pagina(titulo, conteudo) {
 </head>
 <body>
 <div class="banner">${BANNER}</div>
+<script>/* ?rec esconde o banner para gravacao; o disclaimer vira b-roll */ if (/[?&]rec\\b/.test(location.search)) document.querySelector('.banner').style.display = 'none';</script>
 <div class="cabecalho">
   <h1>${esc(titulo)}</h1>
   <span class="pilula ${MODO}">MODO: ${MODO === 'hardened' ? 'BLINDADO' : 'VULNERÁVEL'} <small>(${MODO})</small></span>
