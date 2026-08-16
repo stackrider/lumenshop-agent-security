@@ -20,6 +20,11 @@ backend/data/
 scripts/out/
 *.log
 
+# Lixo de runtime do mock / WireMock (se você trocar o mock por WireMock)
+whatsapp-mock/data/
+wiremock/__files/tmp/
+__wiremock/
+
 # Sistema
 .DS_Store
 Thumbs.db

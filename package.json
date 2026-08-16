@@ -1,0 +1,13 @@
+{
+  "name": "lumenshop-agent-security",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Laboratório do episódio 003 do Joe Ships: um agente de IA no WhatsApp (n8n), quebrado e consertado. Roda em um comando, sem Meta e sem chave de modelo. DADOS FICTÍCIOS.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "./scripts/dev.sh",
+    "dev:down": "./scripts/dev-down.sh",
+    "dev:down:volumes": "./scripts/dev-down.sh --volumes",
+    "attacks": "./scripts/run-attacks.sh"
+  }
+}

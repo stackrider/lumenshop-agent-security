@@ -1,8 +1,12 @@
 name: lumenshop-agent-security
 
 # Laboratório local do episódio 003 do Joe Ships.
-# Sobe TRÊS coisas: o n8n, o backend fictício vulnerável e o backend fictício
-# blindado — os dois ao mesmo tempo, para dar pra comparar lado a lado.
+# Sobe QUATRO coisas: o n8n, o backend fictício vulnerável, o backend fictício
+# blindado (os dois ao mesmo tempo, para comparar lado a lado) e o mock da
+# WhatsApp Cloud API com a UI de conversa (para gravar como se fosse WhatsApp).
+#
+# Um comando sobe tudo:  ./scripts/dev.sh   (ou  npm run dev)
+# Sem conta na Meta, sem token, sem chave de modelo.
 #
 # Nada aqui deve ser exposto na internet. É laboratório, é fictício, é local.
 
@@ -57,15 +61,35 @@ services:
       # Deixa os nós de código lerem as variáveis de limite via $env.
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       LIMIT_BODY_CHARS: "${LIMIT_BODY_CHARS:-2000}"
+      # Para onde o nó "Enviar Resposta no WhatsApp" manda a resposta.
+      # No modo DEMO aponta para o mock; no modo REAL você troca por
+      # https://graph.facebook.com no seu .env (veja SETUP.md).
+      WHATSAPP_API_BASE: "${WHATSAPP_API_BASE:-http://whatsapp-mock:8080}"
+      WHATSAPP_API_VERSION: "${WHATSAPP_API_VERSION:-v21.0}"
       # Preencha no seu .env local — o .env NÃO vai para o git.
-      WHATSAPP_TOKEN: "${WHATSAPP_TOKEN:-}"
-      WHATSAPP_PHONE_NUMBER_ID: "${WHATSAPP_PHONE_NUMBER_ID:-}"
+      WHATSAPP_TOKEN: "${WHATSAPP_TOKEN:-token-ficticio-do-mock}"
+      WHATSAPP_PHONE_NUMBER_ID: "${WHATSAPP_PHONE_NUMBER_ID:-000000000000000}"
     volumes:
       - n8n-dados:/home/node/.n8n
       - ./workflows:/workflows:ro
     depends_on:
       - backend-vulneravel
       - backend-blindado
+    restart: unless-stopped
+
+  whatsapp-mock:
+    build: ./whatsapp-mock
+    container_name: lumenshop-whatsapp-mock
+    environment:
+      PORT: "8080"
+      # Onde o mock encontra o n8n para injetar a mensagem de entrada.
+      N8N_BASE: "http://n8n:5678"
+      WHATSAPP_PHONE_NUMBER_ID: "${WHATSAPP_PHONE_NUMBER_ID:-000000000000000}"
+      WHATSAPP_VERIFY_TOKEN: "${WHATSAPP_VERIFY_TOKEN:-lumenshop-verify-ficticio}"
+    ports:
+      - "${PORT_MOCK:-8080}:8080"
+    depends_on:
+      - n8n
     restart: unless-stopped
 
 volumes:
