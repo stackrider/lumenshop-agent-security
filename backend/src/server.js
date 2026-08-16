@@ -4,6 +4,7 @@
 import express from 'express';
 import { abrirBanco, CAMINHO_BANCO } from './db.js';
 import { ferramentas } from './tools.js';
+import { agente } from './agent.js';
 import { operacao } from './admin.js';
 import { MODO, VERSAO, LIMITES, limitesPublicos } from './limits.js';
 import { registrar } from './logger.js';
@@ -25,6 +26,7 @@ export function criarApp() {
   );
 
   app.use('/tools', ferramentas);
+  app.use('/agent', agente);
   app.use('/', operacao);
 
   app.use((req, res) => {
