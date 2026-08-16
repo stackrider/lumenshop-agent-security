@@ -268,7 +268,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "={{ 'https://graph.facebook.com/v21.0/' + $env.WHATSAPP_PHONE_NUMBER_ID + '/messages' }}",
+        "url": "={{ ($env.WHATSAPP_API_BASE || 'https://graph.facebook.com') + '/' + ($env.WHATSAPP_API_VERSION || 'v21.0') + '/' + ($env.WHATSAPP_PHONE_NUMBER_ID || '000000000000000') + '/messages' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -288,7 +288,7 @@
         "options": {}
       },
       "onError": "continueRegularOutput",
-      "notes": "Sem token da Meta este nó falha e o fluxo continua — dá pra testar tudo no localhost só com curl no webhook."
+      "notes": "No modo DEMO isto aponta para o mock (WHATSAPP_API_BASE=http://whatsapp-mock:8080): o mock grava a resposta e a UI de conversa mostra a bolha. No modo REAL, ponha WHATSAPP_API_BASE=https://graph.facebook.com e o token no .env."
     },
     {
       "id": "lv-0011",
@@ -301,8 +301,43 @@
       ],
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ modo: 'vulnerable', resposta: $('Atendente LumenShop').first().json.output }) }}",
+        "responseBody": "={{ JSON.stringify({ modo: 'vulnerable', resposta: $('Responder (modo demo)').first().json.output }) }}",
         "options": {}
+      }
+    },
+    {
+      "id": "lv-0012",
+      "name": "Responder (modo demo)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        120
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend-vulneravel:3000/agent/responder",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ telefone: $json.telefone, nome: $json.nome, mensagem: $json.mensagem }) }}",
+        "options": {}
+      },
+      "notes": "MODO DEMO: o respondedor determinístico do backend (backend/src/agent.js) responde SEM modelo, chamando as mesmas 4 ferramentas. É isto que faz o laboratório rodar sem chave de LLM. MODO REAL: veja a nota amarela."
+    },
+    {
+      "id": "lv-note",
+      "name": "Demo vs Real",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        140,
+        -120
+      ],
+      "parameters": {
+        "width": 460,
+        "height": 200,
+        "color": 5,
+        "content": "## Modo DEMO (padrão) × Modo REAL\n\n**DEMO** — roda sem chave de modelo. A caixa **Responder (modo demo)** chama `backend/src/agent.js`, o respondedor determinístico, que usa as MESMAS 4 ferramentas. Os ataques e os consertos são reais; só o \"cérebro\" é uma árvore de `if`.\n\n**REAL** — o nó **Atendente LumenShop** (aqui do lado, com Modelo + Memória + as 4 ferramentas) é o §9 do vídeo. Para usá-lo: ligue **Extrair → Atendente → Enviar**, desligue o **Responder (modo demo)**, e cadastre sua credencial no nó **Modelo**."
       }
     }
   ],
@@ -322,7 +357,18 @@
       "main": [
         [
           {
-            "node": "Atendente LumenShop",
+            "node": "Responder (modo demo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder (modo demo)": {
+      "main": [
+        [
+          {
+            "node": "Enviar Resposta no WhatsApp",
             "type": "main",
             "index": 0
           }

@@ -394,7 +394,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "={{ 'https://graph.facebook.com/v21.0/' + $env.WHATSAPP_PHONE_NUMBER_ID + '/messages' }}",
+        "url": "={{ ($env.WHATSAPP_API_BASE || 'https://graph.facebook.com') + '/' + ($env.WHATSAPP_API_VERSION || 'v21.0') + '/' + ($env.WHATSAPP_PHONE_NUMBER_ID || '000000000000000') + '/messages' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -410,7 +410,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $('Vincular Telefone da Sessão').first().json.telefone, type: 'text', text: { body: String($json.resposta ?? '').slice(0, 4000) } }) }}",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $('Vincular Telefone da Sessão').first().json.telefone, type: 'text', text: { body: String($json.resposta ?? $json.output ?? '').slice(0, 4000) } }) }}",
         "options": {}
       },
       "onError": "continueRegularOutput"
@@ -426,8 +426,43 @@
       ],
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ modo: 'hardened', resposta: $('Validar Saída do Modelo').first().json.resposta, alertas: $('Validar Saída do Modelo').first().json.alertas }) }}",
+        "responseBody": "={{ JSON.stringify({ modo: 'hardened', resposta: $('Responder (modo demo)').first().json.output, alertas: $('Responder (modo demo)').first().json.acoes }) }}",
         "options": {}
+      }
+    },
+    {
+      "id": "lh-0018",
+      "name": "Responder (modo demo)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        40
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend-blindado:3000/agent/responder",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ telefone: $json.telefone, nome: $json.nome, mensagem: $json.mensagem }) }}",
+        "options": {}
+      },
+      "notes": "MODO DEMO: o respondedor determinístico do backend blindado (backend/src/agent.js) responde SEM modelo, e por baixo chama as MESMAS ferramentas com o header de sessão — então a autorização em código do §21 continua sendo a de verdade. MODO REAL: veja a nota amarela."
+    },
+    {
+      "id": "lh-note",
+      "name": "Demo vs Real",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -220
+      ],
+      "parameters": {
+        "width": 520,
+        "height": 200,
+        "color": 4,
+        "content": "## Modo DEMO (padrão) × Modo REAL\n\n**DEMO** — roda sem chave de modelo. Depois de **Sessão Válida?**, a caixa **Responder (modo demo)** chama `backend/src/agent.js`, que usa as mesmas ferramentas com o header de sessão. O §21 (identidade em código) e o §22 (limites) já barram antes, no nó **Vincular Telefone da Sessão**.\n\n**REAL** — o cluster **Buscar Cupons → Montar Contexto → Atendente (blindado) → Validar Saída** é o agente com modelo. Para usá-lo: ligue **Sessão Válida? (true) → Buscar Cupons**, desligue o **Responder (modo demo)**, e cadastre sua credencial no nó **Modelo**."
       }
     }
   ],
@@ -469,7 +504,7 @@
       "main": [
         [
           {
-            "node": "Buscar Cupons Permitidos",
+            "node": "Responder (modo demo)",
             "type": "main",
             "index": 0
           }
@@ -477,6 +512,17 @@
         [
           {
             "node": "Recusar (sem chamar o modelo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder (modo demo)": {
+      "main": [
+        [
+          {
+            "node": "Enviar Resposta no WhatsApp",
             "type": "main",
             "index": 0
           }
