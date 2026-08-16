@@ -1,0 +1,74 @@
+name: lumenshop-agent-security
+
+# Laboratório local do episódio 003 do Joe Ships.
+# Sobe TRÊS coisas: o n8n, o backend fictício vulnerável e o backend fictício
+# blindado — os dois ao mesmo tempo, para dar pra comparar lado a lado.
+#
+# Nada aqui deve ser exposto na internet. É laboratório, é fictício, é local.
+
+services:
+  backend-vulneravel:
+    build: ./backend
+    container_name: lumenshop-backend-vulneravel
+    environment:
+      MODE: vulnerable
+      PORT: "3000"
+      DB_PATH: /data/lumenshop.sqlite
+    ports:
+      - "${PORT_VULNERAVEL:-3000}:3000"
+    volumes:
+      - dados-vulneravel:/data
+    restart: unless-stopped
+
+  backend-blindado:
+    build: ./backend
+    container_name: lumenshop-backend-blindado
+    environment:
+      MODE: hardened
+      PORT: "3000"
+      DB_PATH: /data/lumenshop.sqlite
+      LIMIT_BODY_CHARS: "${LIMIT_BODY_CHARS:-2000}"
+      LIMIT_STEPS_PER_SESSION: "${LIMIT_STEPS_PER_SESSION:-12}"
+      LIMIT_CALLS_PER_MINUTE: "${LIMIT_CALLS_PER_MINUTE:-20}"
+      LIMIT_DAILY_SPEND_BRL: "${LIMIT_DAILY_SPEND_BRL:-5.00}"
+      COST_PER_CALL_BRL: "${COST_PER_CALL_BRL:-0.02}"
+    ports:
+      - "${PORT_BLINDADO:-3001}:3000"
+    volumes:
+      - dados-blindado:/data
+    restart: unless-stopped
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION:-latest}
+    container_name: lumenshop-n8n
+    ports:
+      - "${PORT_N8N:-5678}:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:${PORT_N8N:-5678}/
+      GENERIC_TIMEZONE: America/Sao_Paulo
+      TZ: America/Sao_Paulo
+      # Cookie seguro desligado só porque isto roda em http://localhost.
+      N8N_SECURE_COOKIE: "false"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_RUNNERS_ENABLED: "true"
+      # Deixa os nós de código lerem as variáveis de limite via $env.
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      LIMIT_BODY_CHARS: "${LIMIT_BODY_CHARS:-2000}"
+      # Preencha no seu .env local — o .env NÃO vai para o git.
+      WHATSAPP_TOKEN: "${WHATSAPP_TOKEN:-}"
+      WHATSAPP_PHONE_NUMBER_ID: "${WHATSAPP_PHONE_NUMBER_ID:-}"
+    volumes:
+      - n8n-dados:/home/node/.n8n
+      - ./workflows:/workflows:ro
+    depends_on:
+      - backend-vulneravel
+      - backend-blindado
+    restart: unless-stopped
+
+volumes:
+  dados-vulneravel:
+  dados-blindado:
+  n8n-dados:
