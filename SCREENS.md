@@ -34,9 +34,11 @@ curl -s -X POST http://localhost:3000/admin/envenenar # rearma o ataque 4
 
 **Marcação:** `[TELA: WhatsApp da LumenShop respondendo "cadê meu pedido?" em três segundos]`
 
-**Abrir:** WhatsApp com o número de teste da Meta (ver `SETUP.md`, caminho 3).
-Sem número da Meta, grave o equivalente: terminal com o `curl` no webhook, à
-esquerda, e o n8n mostrando a execução verde, à direita.
+**Abrir:** a tela de conversa do mock em <http://localhost:8080> (depois de
+`./scripts/dev.sh`). É uma tela estilo WhatsApp, sem conta na Meta: escolha o
+modo **vulnerável**, digite e grave as bolhas aparecendo. Com número de teste
+da Meta de verdade, use o WhatsApp (ver `SETUP.md`, caminho 3). Em último caso,
+terminal com o `curl` no webhook à esquerda e o n8n em verde à direita.
 
 **Digitar:**
 

@@ -4,8 +4,75 @@
 > telefones falsos. Nada aqui toca sistema de terceiros. Rode só na sua
 > máquina, contra o seu próprio laboratório.
 
-Tem dois caminhos. O primeiro não precisa de WhatsApp, não precisa de conta na
-Meta e não gasta um centavo. Comece por ele.
+Tem alguns caminhos, do mais fácil ao mais completo. O **Caminho 0** sobe tudo
+em um comando e não precisa de WhatsApp, de conta na Meta nem de chave de
+modelo. Comece por ele.
+
+---
+
+## Caminho 0 — um comando (o mais fácil)
+
+```bash
+./scripts/dev.sh          # ou:  npm run dev
+```
+
+Isso sobe **quatro** coisas de uma vez, espera todas ficarem de pé, **importa
+e ativa** os dois workflows no n8n, e imprime as URLs prontas:
+
+| Container | O que é | URL |
+| --- | --- | --- |
+| `lumenshop-n8n` | o agente, nos dois workflows | <http://localhost:5678> |
+| `lumenshop-backend-vulneravel` | a loja fictícia do jeito ingênuo | <http://localhost:3000> |
+| `lumenshop-backend-blindado` | a mesma loja, blindada | <http://localhost:3001> |
+| `lumenshop-whatsapp-mock` | o mock da WhatsApp Cloud API + a tela de conversa | <http://localhost:8080> |
+
+Abra <http://localhost:8080>, escolha o modo (vulnerável/blindado), e mande
+**"cadê meu pedido"**. Os botões de atalho mandam a mensagem exata de cada
+ataque do [ATTACKS.md](ATTACKS.md).
+
+Derrubar tudo: `./scripts/dev-down.sh` (ou `npm run dev:down`). Para apagar
+também os volumes: `./scripts/dev-down.sh --volumes`.
+
+O `dev.sh` é **idempotente**: rodar de novo não duplica os workflows (eles têm
+id fixo, e o `n8n import:workflow` atualiza pelo id).
+
+### A arquitetura do mock
+
+A tarefa pedia "WireMock ou qualquer outra tecnologia de mock". A superfície da
+API da Meta que o workflow usa é pequena, mas **três partes têm estado**: cada
+envio precisa ser guardado, a tela de conversa é servida e faz *polling* desse
+histórico, e a tela injeta a mensagem de entrada no webhook do n8n. Isso
+exigiria o WireMock **mais** um serviço companheiro de qualquer jeito — então
+o mock é um **Express de ~150 linhas** (`whatsapp-mock/`), na mesma stack Node
+do backend, sem dependência extra. Ele mocka exatamente o que o n8n usa:
+
+| Rota do mock | Papel na API da Meta |
+| --- | --- |
+| `POST /{versão}/{phone_number_id}/messages` | o endpoint de **envio** que o nó "Enviar Resposta no WhatsApp" chama. Devolve o envelope 200 no formato da Meta e **guarda o texto** para a tela mostrar. |
+| `GET /webhook?hub.challenge=…` | o **handshake de verificação** do webhook (devolve o `hub.challenge` se o `verify_token` bater). |
+| `POST /__mock/inbound` | a tela chama isto quando o "cliente" digita: monta o payload no formato da Meta e faz POST no webhook de produção do n8n. |
+| `GET /__mock/messages` | *polling* da tela: as bolhas daquela conversa. |
+
+> Se você preferir WireMock, dá para estubar o `POST .../messages` e o
+> `hub.challenge` com *response templating*, mas ainda vai precisar de um
+> serviço com estado para a tela e para a injeção de entrada. Por isso o
+> Express aqui.
+
+### O respondedor determinístico (o "agente sem modelo")
+
+No modo demo, o agente responde por `backend/src/agent.js`: uma árvore de `if`
+que reconhece as mensagens do episódio e **chama as mesmas 4 ferramentas**
+(`/tools/*`) que o nó AI Agent chamaria — com o header de sessão no modo
+blindado, exatamente como o nó de código do n8n faz. Ou seja: **a autorização
+(e a recusa) continua sendo a de verdade**, decidida pelo backend em
+`MODE=vulnerable`/`hardened`. Só o "cérebro" que escolhe a ferramenta é
+determinístico, para o laboratório rodar sem chave de modelo.
+
+Nos dois workflows, o nó **AI Agent** (com Modelo + Memória + as 4 ferramentas)
+continua na tela — ele **é** o §9 do roteiro. O caminho executado no demo passa
+pela caixa **"Responder (modo demo)"**, um HTTP Request que chama esse
+respondedor. Para trocar para o modelo de verdade, veja o Caminho 2 e a nota
+amarela dentro de cada workflow.
 
 ---
 
@@ -28,13 +95,18 @@ cp .env.example .env          # placeholders; não tem segredo nenhum aqui
 docker compose up -d --build
 ```
 
-Sobem três containers:
+Sobem quatro containers:
 
 | Container | O que é | URL |
 | --- | --- | --- |
 | `lumenshop-backend-vulneravel` | A loja fictícia do jeito ingênuo | <http://localhost:3000> |
 | `lumenshop-backend-blindado` | A mesma loja, blindada | <http://localhost:3001> |
 | `lumenshop-n8n` | O n8n | <http://localhost:5678> |
+| `lumenshop-whatsapp-mock` | O mock da WhatsApp Cloud API + a tela de conversa | <http://localhost:8080> |
+
+> Com `docker compose up` você sobe os containers, mas **não** importa os
+> workflows nem os ativa. Ou faça isso pela tela do n8n (§2.1 abaixo), ou use
+> o `./scripts/dev.sh` do Caminho 0, que já faz tudo.
 
 Confira:
 
@@ -65,10 +137,24 @@ MODE=hardened  PORT=3001 npm start      # em outro
 
 ---
 
-## Caminho 2 — o agente inteiro no n8n
+## Caminho 2 — o agente inteiro no n8n (com modelo de verdade)
 
 Agora com modelo de verdade. Continua sem WhatsApp: dá pra conversar com o
-agente batendo no webhook com `curl`.
+agente batendo no webhook com `curl` — ou pela tela de conversa do mock.
+
+> **Como trocar do modo demo para o modo real.** Nos dois workflows, o caminho
+> que roda no demo passa pela caixa **"Responder (modo demo)"**. Para usar o nó
+> **AI Agent** (com o seu modelo), siga a nota amarela dentro do workflow:
+>
+> - **Vulnerável:** ligue **Extrair → Atendente LumenShop → Enviar** e desligue
+>   o **Responder (modo demo)**.
+> - **Blindado:** ligue **Sessão Válida? (true) → Buscar Cupons Permitidos** e
+>   desligue o **Responder (modo demo)**.
+> - Nos dois, cadastre a sua credencial no nó **Modelo** (§2.2 abaixo).
+>
+> O respondedor determinístico e o nó AI Agent chamam as **mesmas ferramentas**,
+> então os ataques e os consertos não mudam — o que muda é quem escreve a
+> resposta.
 
 ### 2.1 Importar os workflows
 
@@ -194,10 +280,19 @@ Você vai sair de lá com três coisas:
 Coloque no seu `.env` local:
 
 ```bash
+# Troque o alvo do mock pela API oficial da Meta:
+WHATSAPP_API_BASE=https://graph.facebook.com
+WHATSAPP_API_VERSION=v21.0
 WHATSAPP_TOKEN=...
 WHATSAPP_PHONE_NUMBER_ID=...
 WHATSAPP_VERIFY_TOKEN=...
 ```
+
+> É só isto que separa o demo do real no envio: no demo, `WHATSAPP_API_BASE`
+> aponta para `http://whatsapp-mock:8080`; no real, para `https://graph.facebook.com`.
+> O nó "Enviar Resposta no WhatsApp" monta a URL a partir dessa variável.
+> Depois de mexer no `.env`, suba de novo (`docker compose up -d`) para o n8n
+> pegar os novos valores.
 
 **Nunca commite o `.env`.** Ele está no `.gitignore`. Se um token vazar,
 revogue no painel da Meta antes de qualquer outra coisa.

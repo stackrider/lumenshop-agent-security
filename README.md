@@ -49,31 +49,63 @@ o modelo ficou mais esperto — foi porque ele parou de ser quem decide tudo.
 - Não exponha este laboratório na internet. Ele foi feito para obedecer, e no
   modo vulnerável ele obedece qualquer um.
 
-## Começando
+## Rodando localmente em um comando
+
+Um comando sobe **tudo** — o n8n, os dois backends e um **mock da WhatsApp
+Cloud API** com uma **tela de conversa estilo WhatsApp** — importa e ativa os
+dois workflows, e imprime as URLs prontas.
 
 ```bash
 git clone https://github.com/stackrider/lumenshop-agent-security.git
 cd lumenshop-agent-security
-cp .env.example .env
-docker compose up -d --build
-
-# a loja fictícia, em tela cheia
-open http://localhost:3000/admin/db
-
-# os seis ataques, nos dois modos, com o placar no fim
-./scripts/run-attacks.sh
+./scripts/dev.sh          # ou:  npm run dev
 ```
 
-Sobem três coisas:
+> **Sem conta na Meta. Sem token. Sem chave de modelo.** No modo demo o agente
+> responde por um **respondedor determinístico** (`backend/src/agent.js`) que
+> chama exatamente as mesmas 4 ferramentas do agente de verdade — então os
+> ataques e os consertos que você vê são os reais; só o "cérebro" é uma árvore
+> de `if`. Para ligar um modelo de verdade, veja o [SETUP.md](SETUP.md).
+
+Ao final, o script imprime:
 
 | | O que é | Onde |
 | --- | --- | --- |
+| **Conversa (estilo WhatsApp)** | onde você digita como cliente e vê as duas pontas | <http://localhost:8080> |
+| **Editor do n8n** | o agente, nos dois workflows | <http://localhost:5678> |
+| **Banco fictício** | a loja inteira, em tela cheia | <http://localhost:3000/admin/db> |
+| **Logs** | a 4ª regra: registre tudo | <http://localhost:3000/admin/logs?html=1> |
+| **Gastos** | o razão de gasto simulado | <http://localhost:3001/admin/gastos> |
 | Backend vulnerável | a LumenShop do jeito ingênuo | <http://localhost:3000> |
 | Backend blindado | a mesma loja, com autorização em código | <http://localhost:3001> |
-| n8n | o agente | <http://localhost:5678> |
 
-Nada disso precisa de WhatsApp, de conta na Meta ou de chave de modelo. Para
-ligar o agente de verdade, veja o [SETUP.md](SETUP.md).
+**Experimente:** abra a conversa em <http://localhost:8080>, escolha o modo
+(vulnerável/blindado) e mande **"cadê meu pedido"**. Depois toque num dos botões
+de ataque e veja a diferença. Os botões `ataque 1`, `ataque 2`… mandam a
+mensagem exata do [ATTACKS.md](ATTACKS.md).
+
+Para derrubar tudo:
+
+```bash
+./scripts/dev-down.sh              # ou:  npm run dev:down
+./scripts/dev-down.sh --volumes    # apaga também os bancos e os dados do n8n
+```
+
+E os seis ataques nos dois modos, com o placar no fim, no nível da ferramenta:
+
+```bash
+./scripts/run-attacks.sh           # ou:  npm run attacks
+```
+
+### Sem o script (na mão)
+
+```bash
+cp .env.example .env               # placeholders; não tem segredo nenhum aqui
+docker compose up -d --build
+# importe e ative os workflows (ou faça pela tela do n8n — veja SETUP.md)
+docker compose exec -T n8n n8n import:workflow --input=/workflows/lumenshop-vulnerable.json
+docker compose exec -T n8n n8n import:workflow --input=/workflows/lumenshop-hardened.json
+```
 
 ## Onde está cada coisa
 
@@ -84,9 +116,11 @@ ligar o agente de verdade, veja o [SETUP.md](SETUP.md).
 | [SCREENS.md](SCREENS.md) | Lista de tomadas: cada marcação `[TELA: …]` do roteiro mapeada para a tela exata, o que digitar e o que reparar. |
 | [prompts/system-vulnerable.md](prompts/system-vulnerable.md) | O prompt ingênuo do §8. Bonito, educado e completamente desprotegido. |
 | [prompts/system-hardened.md](prompts/system-hardened.md) | O prompt blindado — e por que o prompt é a camada mais fraca de todas. |
-| [workflows/](workflows/) | Os dois workflows do n8n, prontos para importar. |
-| [backend/](backend/) | A loja fictícia: Node + Express + SQLite, com os dois modos. |
+| [workflows/](workflows/) | Os dois workflows do n8n, prontos para importar. Cada um mostra o nó AI Agent (o §9) **e** a caixa "Responder (modo demo)" que roda sem modelo. |
+| [backend/](backend/) | A loja fictícia: Node + Express + SQLite, com os dois modos. O [respondedor determinístico](backend/src/agent.js) é o "agente sem modelo" do modo demo. |
+| [whatsapp-mock/](whatsapp-mock/) | O mock da WhatsApp Cloud API (Meta) + a tela de conversa estilo WhatsApp. É o que faz o §1/§11 serem graváveis como WhatsApp de verdade, sem conta na Meta. |
 | [docs/api-contract.md](docs/api-contract.md) | O contrato: cada rota, cada campo, cada código de erro, nos dois modos. |
+| [scripts/dev.sh](scripts/dev.sh) | **Sobe tudo em um comando** e imprime as URLs. `dev-down.sh` derruba. |
 | [scripts/run-attacks.sh](scripts/run-attacks.sh) | Roda os seis ataques nos dois backends e imprime o placar. |
 
 ## As quatro regras do conserto
@@ -130,6 +164,14 @@ attacks against it drawn from the
 [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/), and
 then the hardened version — where four of the six attacks die. Every attack is
 published together with its fix.
+
+**One command runs the whole thing** — `./scripts/dev.sh` brings up n8n, both
+backends, and a **WhatsApp Cloud API mock** with a **WhatsApp-style chat UI**,
+imports and activates both workflows, and prints the URLs. **No Meta account,
+no WhatsApp number and no LLM API key are needed:** in demo mode a deterministic
+responder (`backend/src/agent.js`) answers by calling the very same four tools
+the real AI agent would. Real mode (a real model + real Meta) is documented in
+[SETUP.md](SETUP.md).
 
 **Only test systems you own.** Everything here runs on `localhost` against a
 mock backend with fake data. No third-party system was attacked in the making
